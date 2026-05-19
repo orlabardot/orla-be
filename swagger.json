@@ -1,0 +1,789 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Orla BE API",
+    "description": "API do backend Orla — catálogo de óculos multi-tenant",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3333",
+      "description": "Development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "tenantSlug": {
+        "name": "x-tenant-slug",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Slug do tenant"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "VALIDATION_ERROR" },
+          "message": { "type": "string", "example": "Validation failed" },
+          "errors": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["admin", "user"] },
+          "tenantId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Brand": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sku": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+          "brandId": { "type": "string", "format": "uuid", "nullable": true },
+          "frameType": { "type": "string", "enum": ["grau", "sol", "clip-on", "esportivo"], "nullable": true },
+          "lensType": { "type": "string", "nullable": true },
+          "bridgeSizeMm": { "type": "number", "nullable": true },
+          "templeSizeMm": { "type": "number", "nullable": true },
+          "gender": { "type": "string", "enum": ["masculino", "feminino", "unissex", "infantil"], "nullable": true },
+          "isActive": { "type": "boolean" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Variant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "productId": { "type": "string", "format": "uuid" },
+          "skuVariant": { "type": "string" },
+          "colorCode": { "type": "string", "nullable": true },
+          "colorLabel": { "type": "string", "nullable": true },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Image": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "variantId": { "type": "string", "format": "uuid" },
+          "url": { "type": "string" },
+          "isPrimary": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["ok", "degraded"] },
+                    "db": { "type": "string", "enum": ["ok", "error"] },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login",
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login bem-sucedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Credenciais inválidas" },
+          "422": { "description": "Erro de validação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "responses": {
+          "200": {
+            "description": "Logout bem-sucedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Logged out successfully" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Usuário autenticado",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "responses": {
+          "200": {
+            "description": "Dados do usuário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Listar produtos (paginado)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Busca textual" },
+          { "name": "frameType", "in": "query", "schema": { "type": "string", "enum": ["grau", "sol", "clip-on", "esportivo"] } },
+          { "name": "categoryId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "brandId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "colorCode", "in": "query", "schema": { "type": "string" } },
+          { "name": "lensType", "in": "query", "schema": { "type": "string" } },
+          { "name": "bridgeMin", "in": "query", "schema": { "type": "number" } },
+          { "name": "bridgeMax", "in": "query", "schema": { "type": "number" } },
+          { "name": "templeMin", "in": "query", "schema": { "type": "number" } },
+          { "name": "templeMax", "in": "query", "schema": { "type": "number" } },
+          { "name": "tagIds", "in": "query", "schema": { "type": "string" }, "description": "UUIDs separados por vírgula" }
+        ],
+        "responses": {
+          "200": { "description": "Lista paginada de produtos" }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "summary": "Criar produto (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sku", "name"],
+                "properties": {
+                  "sku": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+                  "description": { "type": "string" },
+                  "categoryId": { "type": "string", "format": "uuid" },
+                  "brandId": { "type": "string", "format": "uuid" },
+                  "frameType": { "type": "string", "enum": ["grau", "sol", "clip-on", "esportivo"] },
+                  "lensType": { "type": "string", "maxLength": 100 },
+                  "bridgeSizeMm": { "type": "number", "exclusiveMinimum": 0 },
+                  "templeSizeMm": { "type": "number", "exclusiveMinimum": 0 },
+                  "gender": { "type": "string", "enum": ["masculino", "feminino", "unissex", "infantil"] },
+                  "tagIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produto criado",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } }
+          },
+          "422": { "description": "Erro de validação" }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Buscar produto por ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produto com variantes",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } }
+          },
+          "404": { "description": "Produto não encontrado" }
+        }
+      },
+      "put": {
+        "tags": ["Products"],
+        "summary": "Atualizar produto (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+                  "description": { "type": "string" },
+                  "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+                  "brandId": { "type": "string", "format": "uuid", "nullable": true },
+                  "frameType": { "type": "string", "enum": ["grau", "sol", "clip-on", "esportivo"] },
+                  "lensType": { "type": "string", "maxLength": 100 },
+                  "bridgeSizeMm": { "type": "number", "exclusiveMinimum": 0 },
+                  "templeSizeMm": { "type": "number", "exclusiveMinimum": 0 },
+                  "gender": { "type": "string", "enum": ["masculino", "feminino", "unissex", "infantil"] },
+                  "isActive": { "type": "boolean" },
+                  "tagIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Produto atualizado" },
+          "404": { "description": "Produto não encontrado" }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "summary": "Excluir produto (admin, soft delete)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Produto excluído" },
+          "404": { "description": "Produto não encontrado" }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Listar categorias",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "responses": {
+          "200": {
+            "description": "Lista de categorias",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } } } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Criar categoria (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Categoria criada" }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "put": {
+        "tags": ["Categories"],
+        "summary": "Atualizar categoria (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Categoria atualizada" },
+          "404": { "description": "Não encontrada" }
+        }
+      },
+      "delete": {
+        "tags": ["Categories"],
+        "summary": "Excluir categoria (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Categoria excluída" }
+        }
+      }
+    },
+    "/brands": {
+      "get": {
+        "tags": ["Brands"],
+        "summary": "Listar marcas",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "responses": {
+          "200": {
+            "description": "Lista de marcas",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Brand" } } } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Brands"],
+        "summary": "Criar marca (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Marca criada" }
+        }
+      }
+    },
+    "/brands/{id}": {
+      "put": {
+        "tags": ["Brands"],
+        "summary": "Atualizar marca (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Marca atualizada" }
+        }
+      },
+      "delete": {
+        "tags": ["Brands"],
+        "summary": "Excluir marca (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Marca excluída" }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "tags": ["Tags"],
+        "summary": "Listar tags",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "responses": {
+          "200": {
+            "description": "Lista de tags",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } } } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tags"],
+        "summary": "Criar tag (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tag criada" }
+        }
+      }
+    },
+    "/tags/{id}": {
+      "put": {
+        "tags": ["Tags"],
+        "summary": "Atualizar tag (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Tag atualizada" }
+        }
+      },
+      "delete": {
+        "tags": ["Tags"],
+        "summary": "Excluir tag (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Tag excluída" }
+        }
+      }
+    },
+    "/products/{id}/variants": {
+      "get": {
+        "tags": ["Variants"],
+        "summary": "Listar variantes de um produto",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Product ID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de variantes",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Variant" } } } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Variants"],
+        "summary": "Criar variante (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Product ID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["skuVariant"],
+                "properties": {
+                  "skuVariant": { "type": "string", "minLength": 1, "maxLength": 150 },
+                  "colorCode": { "type": "string", "maxLength": 20 },
+                  "colorLabel": { "type": "string", "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Variante criada" }
+        }
+      }
+    },
+    "/products/{id}/variants/{variantId}": {
+      "put": {
+        "tags": ["Variants"],
+        "summary": "Atualizar variante (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Product ID" },
+          { "name": "variantId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "colorLabel": { "type": "string", "maxLength": 100 },
+                  "isActive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Variante atualizada" }
+        }
+      },
+      "delete": {
+        "tags": ["Variants"],
+        "summary": "Excluir variante (admin, soft delete)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Product ID" },
+          { "name": "variantId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Variante excluída" }
+        }
+      }
+    },
+    "/variants/{variantId}/images": {
+      "post": {
+        "tags": ["Images"],
+        "summary": "Upload de imagem (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "variantId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "Imagem (max 10MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Imagem enviada",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Image" } } } } }
+          }
+        }
+      }
+    },
+    "/variants/{variantId}/images/{imageId}": {
+      "delete": {
+        "tags": ["Images"],
+        "summary": "Excluir imagem (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "variantId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "imageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "Imagem excluída" }
+        }
+      }
+    },
+    "/variants/{variantId}/images/{imageId}/primary": {
+      "patch": {
+        "tags": ["Images"],
+        "summary": "Definir imagem como principal (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/tenantSlug" },
+          { "name": "variantId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "imageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Imagem definida como principal",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Image" } } } } }
+          }
+        }
+      }
+    },
+    "/pdf/generate": {
+      "post": {
+        "tags": ["PDF"],
+        "summary": "Gerar catálogo PDF",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/tenantSlug" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["variantIds"],
+                "properties": {
+                  "variantIds": { "type": "array", "items": { "type": "string", "format": "uuid" }, "minItems": 1, "maxItems": 100 },
+                  "clientName": { "type": "string", "maxLength": 255 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Arquivo PDF gerado",
+            "content": {
+              "application/pdf": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

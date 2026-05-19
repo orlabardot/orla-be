@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: orla_postgres
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: orla
+      POSTGRES_PASSWORD: orla
+      POSTGRES_DB: orla_db
+    volumes:
+      - orla_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U orla -d orla_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  orla_postgres_data:

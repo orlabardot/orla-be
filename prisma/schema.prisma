@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// TENANTS (multi-tenancy para futuro SaaS)
+// ============================================================
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?  @map("logo_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users      User[]
+  products   Product[]
+  categories Category[]
+  brands     Brand[]
+  tags       Tag[]
+  variants   ProductVariant[]
+
+  @@map("tenants")
+}
+
+// ============================================================
+// USERS (funcionários)
+// ============================================================
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  name         String
+  email        String
+  passwordHash String   @map("password_hash")
+  role         String   @default("employee") // 'admin' | 'employee'
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[] @relation("CreatedBy")
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+model Category {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, slug])
+  @@map("categories")
+}
+
+// ============================================================
+// BRANDS (fornecedores / marcas)
+// ============================================================
+model Brand {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, slug])
+  @@map("brands")
+}
+
+// ============================================================
+// TAGS
+// ============================================================
+model Tag {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  name     String
+  slug     String
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productTags ProductTag[]
+
+  @@unique([tenantId, slug])
+  @@map("tags")
+}
+
+// ============================================================
+// PRODUCTS (produto pai — atributos técnicos fixos do modelo)
+// ============================================================
+model Product {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  categoryId   String?  @map("category_id")
+  brandId      String?  @map("brand_id")
+  sku          String
+  name         String
+  description  String?
+  frameType    String?  @map("frame_type")   // 'grau' | 'sol' | 'clip-on' | 'esportivo'
+  lensType     String?  @map("lens_type")
+  sizeMm       Decimal? @map("size_mm") @db.Decimal(5, 2)
+  bridgeSizeMm Decimal? @map("bridge_size_mm") @db.Decimal(5, 2)
+  templeSizeMm Decimal? @map("temple_size_mm") @db.Decimal(5, 2)
+  gender       String?                         // 'masculino' | 'feminino' | 'unissex' | 'infantil'
+  isActive     Boolean  @default(true) @map("is_active")
+  deletedAt    DateTime? @map("deleted_at")
+  createdBy    String?  @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand      Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  creator    User?            @relation("CreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  variants   ProductVariant[]
+  productTags ProductTag[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId], map: "idx_products_tenant")
+  @@index([categoryId], map: "idx_products_category")
+  @@index([brandId], map: "idx_products_brand")
+  @@map("products")
+}
+
+// ============================================================
+// PRODUCT_TAGS (N:M)
+// ============================================================
+model ProductTag {
+  productId String @map("product_id")
+  tagId     String @map("tag_id")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@map("product_tags")
+}
+
+// ============================================================
+// PRODUCT_VARIANTS (unidade selecionável no catálogo)
+// ============================================================
+model ProductVariant {
+  id         String    @id @default(uuid())
+  productId  String    @map("product_id")
+  tenantId   String    @map("tenant_id")
+  skuVariant String    @map("sku_variant")
+  colorCode  String?   @map("color_code")
+  colorLabel String?   @map("color_label")
+  isActive   Boolean   @default(true) @map("is_active")
+  deletedAt  DateTime? @map("deleted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images  VariantImage[]
+
+  @@unique([tenantId, skuVariant])
+  @@unique([productId, colorCode])
+  @@index([productId], map: "idx_variants_product")
+  @@index([tenantId], map: "idx_variants_tenant")
+  @@map("product_variants")
+}
+
+// ============================================================
+// VARIANT_IMAGES
+// ============================================================
+model VariantImage {
+  id         String   @id @default(uuid())
+  variantId  String   @map("variant_id")
+  storageKey String   @map("storage_key")
+  url        String
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId], map: "idx_variant_images_variant")
+  @@map("variant_images")
+}
