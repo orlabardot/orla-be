@@ -16,6 +16,7 @@ import { variantsRoutes } from './http/routes/variants.routes'
 import { imagesRoutes } from './http/routes/images.routes'
 import { pdfRoutes } from './http/routes/pdf.routes'
 import { catalogRoutes } from './http/routes/catalog.routes'
+import { usersRoutes } from './http/routes/users.routes'
 import { prisma } from './lib/prisma'
 
 export function buildApp() {
@@ -109,6 +110,7 @@ export function buildApp() {
   app.register(imagesRoutes)
   app.register(pdfRoutes)
   app.register(catalogRoutes)
+  app.register(usersRoutes)
 
   return app
 }
