@@ -19,6 +19,7 @@ const listCatalogSchema = z.object({
   templeMin: z.coerce.number().optional(),
   templeMax: z.coerce.number().optional(),
   tagIds: z.string().optional(), // CSV: "uuid1,uuid2"
+  sort: z.enum(['name_asc', 'name_desc', 'newest']).default('name_asc'),
 })
 
 export async function catalogRoutes(app: FastifyInstance) {
@@ -46,6 +47,7 @@ export async function catalogRoutes(app: FastifyInstance) {
       templeMin: query.templeMin,
       templeMax: query.templeMax,
       tagIds,
+      sort: query.sort,
     })
 
     return reply.send(result)
