@@ -11,7 +11,7 @@ interface Input {
 }
 
 export async function createUserUseCase(input: Input) {
-  const existing = await usersRepository.findByEmail(input.tenantId, input.email)
+  const existing = await usersRepository.findByEmail(input.email)
   if (existing) {
     throw new ConflictError(`Email "${input.email}" already in use`)
   }

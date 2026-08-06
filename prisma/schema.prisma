@@ -36,7 +36,7 @@ model User {
   id           String   @id @default(uuid())
   tenantId     String   @map("tenant_id")
   name         String
-  email        String
+  email        String   @unique
   passwordHash String   @map("password_hash")
   role         String   @default("employee") // 'admin' | 'employee'
   isActive     Boolean  @default(true) @map("is_active")
@@ -46,7 +46,7 @@ model User {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[] @relation("CreatedBy")
 
-  @@unique([tenantId, email])
+  @@index([tenantId], map: "idx_users_tenant")
   @@map("users")
 }
 

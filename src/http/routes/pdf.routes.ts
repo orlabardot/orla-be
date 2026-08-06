@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { generatePdfUseCase } from '../../modules/pdf/use-cases/generate-pdf.use-case'
 
@@ -10,8 +10,8 @@ const generatePdfSchema = z.object({
 })
 
 export async function pdfRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // POST /pdf/generate
   app.post('/pdf/generate', async (request, reply) => {

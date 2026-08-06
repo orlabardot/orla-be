@@ -1,6 +1,5 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
 import { authenticate } from '../middlewares/authenticate'
 import { loginUseCase } from '../../modules/auth/use-cases/login.use-case'
 
@@ -12,13 +11,11 @@ const loginBodySchema = z.object({
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login — rate limit: 5 tentativas/min por IP
   app.post('/auth/login', {
-    preHandler: [resolveTenant],
     config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const body = loginBodySchema.parse(request.body)
 
-    const { user } = await loginUseCase({
-      tenantId: request.tenant.id,
+    const { user, tenant } = await loginUseCase({
       email: body.email,
       password: body.password,
     })
@@ -37,6 +34,7 @@ export async function authRoutes(app: FastifyInstance) {
         email: user.email,
         role: user.role,
       },
+      tenant,
     })
   })
 
@@ -45,7 +43,7 @@ export async function authRoutes(app: FastifyInstance) {
   // Rota existe para padronizar o fluxo no frontend.
   app.post(
     '/auth/logout',
-    { preHandler: [resolveTenant, authenticate] },
+    { preHandler: [authenticate] },
     async (_request, reply) => {
       return reply.status(200).send({ message: 'Logged out successfully' })
     },
@@ -54,7 +52,7 @@ export async function authRoutes(app: FastifyInstance) {
   // GET /auth/me — retorna dados do usuário autenticado
   app.get(
     '/auth/me',
-    { preHandler: [resolveTenant, authenticate] },
+    { preHandler: [authenticate] },
     async (request, reply) => {
       return reply.status(200).send({ user: request.user })
     },

@@ -1,10 +1,9 @@
 import { prisma } from '../../lib/prisma'
 
 export const authRepository = {
-  async findUserByEmail(tenantId: string, email: string) {
+  async findUserByEmail(email: string) {
     return prisma.user.findFirst({
       where: {
-        tenantId,
         email,
         isActive: true,
       },
@@ -15,6 +14,9 @@ export const authRepository = {
         email: true,
         passwordHash: true,
         role: true,
+        tenant: {
+          select: { id: true, slug: true, name: true, logoUrl: true },
+        },
       },
     })
   },

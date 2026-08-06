@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { categoriesRepository } from '../../modules/catalog/catalog.repository'
@@ -18,8 +18,8 @@ const idParamSchema = z.object({
 
 export async function categoriesRoutes(app: FastifyInstance) {
   // Todas as rotas exigem tenant + auth
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // GET /categories
   app.get('/categories', async (request, reply) => {

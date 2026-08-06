@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { createProductUseCase } from '../../modules/products/use-cases/create-product.use-case'
@@ -57,8 +57,8 @@ const idParamSchema = z.object({
 })
 
 export async function productsRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // GET /products — listagem com filtros e paginação
   app.get('/products', async (request, reply) => {

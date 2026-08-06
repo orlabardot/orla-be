@@ -31,7 +31,7 @@ export async function updateUserUseCase(input: Input) {
   }
 
   if (input.email && input.email !== user.email) {
-    const existing = await usersRepository.findByEmail(input.tenantId, input.email)
+    const existing = await usersRepository.findByEmail(input.email)
     if (existing) {
       throw new ConflictError(`Email "${input.email}" already in use`)
     }

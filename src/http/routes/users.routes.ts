@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { createUserUseCase } from '../../modules/users/use-cases/create-user.use-case'
@@ -28,8 +28,8 @@ const idParamSchema = z.object({
 
 export async function usersRoutes(app: FastifyInstance) {
   // Gestão de usuários é restrita a admins — nenhum employee acessa essas rotas
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
   app.addHook('preHandler', requireAdmin)
 
   // GET /users

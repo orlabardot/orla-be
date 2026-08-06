@@ -25,9 +25,9 @@ export const usersRepository = {
     })
   },
 
-  async findByEmail(tenantId: string, email: string) {
-    return prisma.user.findFirst({
-      where: { tenantId, email },
+  async findByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
       select: { id: true, email: true },
     })
   },

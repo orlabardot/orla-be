@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { variantsRepository } from '../../modules/variants/variants.repository'
@@ -29,8 +29,8 @@ const updateVariantSchema = z.object({
 })
 
 export async function variantsRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // GET /products/:id/variants
   app.get('/products/:id/variants', async (request, reply) => {

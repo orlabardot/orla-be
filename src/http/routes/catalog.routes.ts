@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { listCatalogUseCase } from '../../modules/variants/use-cases/list-catalog.use-case'
 
@@ -20,8 +20,8 @@ const listCatalogSchema = z.object({
 })
 
 export async function catalogRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // GET /catalog — lista plana de variantes para o catálogo
   app.get('/catalog', async (request, reply) => {

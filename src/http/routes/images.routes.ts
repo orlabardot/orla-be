@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { resolveTenant } from '../middlewares/resolve-tenant'
+import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { uploadImageUseCase } from '../../modules/images/use-cases/upload-image.use-case'
@@ -17,8 +17,8 @@ const imageParamSchema = z.object({
 })
 
 export async function imagesRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', resolveTenant)
   app.addHook('preHandler', authenticate)
+  app.addHook('preHandler', resolveTenantFromAuth)
 
   // POST /variants/:variantId/images — upload (admin)
   app.post(
