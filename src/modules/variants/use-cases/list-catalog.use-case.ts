@@ -10,6 +10,8 @@ export interface ListCatalogFilters {
   categoryId?: string
   brandId?: string
   colorCode?: string
+  sizeMin?: number
+  sizeMax?: number
   bridgeMin?: number
   bridgeMax?: number
   templeMin?: number
@@ -18,7 +20,7 @@ export interface ListCatalogFilters {
 }
 
 export async function listCatalogUseCase(filters: ListCatalogFilters) {
-  const { tenantId, page, limit, q, tagIds, colorCode, frameType, categoryId, brandId, bridgeMin, bridgeMax, templeMin, templeMax } = filters
+  const { tenantId, page, limit, q, tagIds, colorCode, frameType, categoryId, brandId, sizeMin, sizeMax, bridgeMin, bridgeMax, templeMin, templeMax } = filters
   const skip = (page - 1) * limit
 
   const productWhere: Prisma.ProductWhereInput = {
@@ -30,6 +32,12 @@ export async function listCatalogUseCase(filters: ListCatalogFilters) {
   if (frameType) productWhere.frameType = frameType
   if (categoryId) productWhere.categoryId = categoryId
   if (brandId) productWhere.brandId = brandId
+
+  if (sizeMin || sizeMax) {
+    productWhere.sizeMm = {}
+    if (sizeMin) productWhere.sizeMm.gte = new Prisma.Decimal(sizeMin)
+    if (sizeMax) productWhere.sizeMm.lte = new Prisma.Decimal(sizeMax)
+  }
 
   if (bridgeMin || bridgeMax) {
     productWhere.bridgeSizeMm = {}
