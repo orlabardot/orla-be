@@ -12,12 +12,13 @@ datasource db {
 // TENANTS (multi-tenancy para futuro SaaS)
 // ============================================================
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  logoUrl   String?  @map("logo_url")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  logoUrl       String?  @map("logo_url")
+  whatsappPhone String?  @map("whatsapp_phone")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   users      User[]
   products   Product[]
@@ -25,6 +26,7 @@ model Tenant {
   brands     Brand[]
   tags       Tag[]
   variants   ProductVariant[]
+  orders     Order[]
 
   @@map("tenants")
 }
@@ -45,6 +47,7 @@ model User {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[] @relation("CreatedBy")
+  orders   Order[]
 
   @@index([tenantId], map: "idx_users_tenant")
   @@map("users")
@@ -169,6 +172,7 @@ model ProductVariant {
   product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   images  VariantImage[]
+  orderItems OrderItem[]
 
   @@unique([tenantId, skuVariant])
   @@unique([productId, colorCode])
@@ -193,4 +197,47 @@ model VariantImage {
 
   @@index([variantId], map: "idx_variant_images_variant")
   @@map("variant_images")
+}
+
+// ============================================================
+// ORDERS (pedido feito pelo cliente — sempre finalizado por um humano
+// do time da distribuidora, nunca cobrado online)
+// ============================================================
+model Order {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  userId       String   @map("user_id")
+  cnpj         String
+  contactPhone String   @map("contact_phone")
+  status       String   @default("pendente") // 'pendente' | 'atendido'
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items  OrderItem[]
+
+  @@index([tenantId], map: "idx_orders_tenant")
+  @@index([userId], map: "idx_orders_user")
+  @@map("orders")
+}
+
+// ============================================================
+// ORDER_ITEMS (linha do pedido — guarda um retrato da variante no
+// momento do pedido, pra continuar legível mesmo se a variante mudar
+// ou for removida depois)
+// ============================================================
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String  @map("order_id")
+  variantId   String? @map("variant_id")
+  skuVariant  String  @map("sku_variant")
+  productName String  @map("product_name")
+  colorLabel  String? @map("color_label")
+  quantity    Int     @default(1)
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId], map: "idx_order_items_order")
+  @@map("order_items")
 }

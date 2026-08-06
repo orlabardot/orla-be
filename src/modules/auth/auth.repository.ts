@@ -15,7 +15,7 @@ export const authRepository = {
         passwordHash: true,
         role: true,
         tenant: {
-          select: { id: true, slug: true, name: true, logoUrl: true },
+          select: { id: true, slug: true, name: true, logoUrl: true, whatsappPhone: true },
         },
       },
     })
