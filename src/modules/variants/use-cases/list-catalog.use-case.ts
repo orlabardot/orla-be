@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../../lib/prisma'
 
+export type CatalogSort = 'name_asc' | 'name_desc' | 'newest'
+
 export interface ListCatalogFilters {
   tenantId: string
   page: number
@@ -17,10 +19,17 @@ export interface ListCatalogFilters {
   templeMin?: number
   templeMax?: number
   tagIds?: string[]
+  sort?: CatalogSort
+}
+
+const ORDER_BY: Record<CatalogSort, Prisma.ProductVariantOrderByWithRelationInput[]> = {
+  name_asc: [{ product: { name: 'asc' } }, { colorCode: { sort: 'asc', nulls: 'last' } }],
+  name_desc: [{ product: { name: 'desc' } }, { colorCode: { sort: 'asc', nulls: 'last' } }],
+  newest: [{ product: { createdAt: 'desc' } }, { colorCode: { sort: 'asc', nulls: 'last' } }],
 }
 
 export async function listCatalogUseCase(filters: ListCatalogFilters) {
-  const { tenantId, page, limit, q, tagIds, colorCode, frameType, categoryId, brandId, sizeMin, sizeMax, bridgeMin, bridgeMax, templeMin, templeMax } = filters
+  const { tenantId, page, limit, q, tagIds, colorCode, frameType, categoryId, brandId, sizeMin, sizeMax, bridgeMin, bridgeMax, templeMin, templeMax, sort } = filters
   const skip = (page - 1) * limit
 
   const productWhere: Prisma.ProductWhereInput = {
@@ -77,10 +86,7 @@ export async function listCatalogUseCase(filters: ListCatalogFilters) {
       where: variantWhere,
       skip,
       take: limit,
-      orderBy: [
-        { product: { name: 'asc' } },
-        { colorCode: { sort: 'asc', nulls: 'last' } },
-      ],
+      orderBy: ORDER_BY[sort ?? 'name_asc'],
       include: {
         product: {
           include: {
@@ -89,8 +95,8 @@ export async function listCatalogUseCase(filters: ListCatalogFilters) {
           },
         },
         images: {
-          where: { isPrimary: true },
-          take: 1,
+          orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+          take: 3,
         },
       },
     }),
@@ -99,10 +105,12 @@ export async function listCatalogUseCase(filters: ListCatalogFilters) {
 
   const data = variants.map((v) => ({
     variantId: v.id,
+    productId: v.product.id,
     skuVariant: v.skuVariant,
     colorCode: v.colorCode,
     colorLabel: v.colorLabel,
     primaryImageUrl: v.images[0]?.url ?? null,
+    imageUrls: v.images.map((img) => img.url),
     productName: v.product.name,
     productSku: v.product.sku,
     frameType: v.product.frameType,
