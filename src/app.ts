@@ -17,6 +17,8 @@ import { imagesRoutes } from './http/routes/images.routes'
 import { pdfRoutes } from './http/routes/pdf.routes'
 import { catalogRoutes } from './http/routes/catalog.routes'
 import { usersRoutes } from './http/routes/users.routes'
+import { ordersRoutes } from './http/routes/orders.routes'
+import { tenantRoutes } from './http/routes/tenant.routes'
 import { prisma } from './lib/prisma'
 
 export function buildApp() {
@@ -111,6 +113,8 @@ export function buildApp() {
   app.register(pdfRoutes)
   app.register(catalogRoutes)
   app.register(usersRoutes)
+  app.register(ordersRoutes)
+  app.register(tenantRoutes)
 
   return app
 }

@@ -20,6 +20,7 @@ interface ExecuteOutput {
     slug: string
     name: string
     logoUrl: string | null
+    whatsappPhone: string | null
   }
 }
 
