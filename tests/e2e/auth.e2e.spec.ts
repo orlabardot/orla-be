@@ -136,4 +136,29 @@ describe('Auth E2E', () => {
     expect(response.statusCode).toBe(200)
     expect(response.json().tenant.id).toBe(tenantA.id)
   })
+
+  it('POST /auth/login — bloqueia com 429 (não 500) depois de estourar o rate limit', async () => {
+    // Instância isolada só pra esse teste: o rate limit é por IP e fica
+    // guardado em memória na instância do Fastify, então usar o `app`
+    // compartilhado do describe poluiria (e seria poluído por) os outros
+    // testes de login deste arquivo.
+    const isolatedApp = buildApp()
+    await isolatedApp.ready()
+
+    const tenant = await makeTenant()
+    await makeUser({ tenantId: tenant.id, email: 'ratelimit@test.com', password: 'pass' })
+
+    const payload = { email: 'ratelimit@test.com', password: 'pass' }
+    let lastResponse
+    for (let i = 0; i < 6; i++) {
+      lastResponse = await isolatedApp.inject({ method: 'POST', url: '/auth/login', payload })
+    }
+
+    // @fastify/rate-limit lança um Error simples com statusCode 429 — sem
+    // tratamento explícito no error handler, isso caía num 500 genérico.
+    expect(lastResponse!.statusCode).toBe(429)
+    expect(lastResponse!.json().code).toBe('TOO_MANY_REQUESTS')
+
+    await isolatedApp.close()
+  })
 })
