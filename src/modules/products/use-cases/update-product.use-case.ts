@@ -5,6 +5,7 @@ import { categoriesRepository, brandsRepository, tagsRepository } from '../../ca
 interface Input {
   tenantId: string
   id: string
+  sku?: string
   name?: string
   description?: string
   categoryId?: string | null
@@ -22,6 +23,14 @@ export async function updateProductUseCase(input: Input) {
   const product = await productsRepository.findById(input.tenantId, input.id)
   if (!product) {
     throw new ResourceNotFoundError('Product', input.id)
+  }
+
+  // SKU único por tenant (ignora o próprio produto)
+  if (input.sku && input.sku !== product.sku) {
+    const existingSku = await productsRepository.findBySku(input.tenantId, input.sku)
+    if (existingSku) {
+      throw new ConflictError(`Product with SKU "${input.sku}" already exists`)
+    }
   }
 
   // Validar categoryId se fornecido

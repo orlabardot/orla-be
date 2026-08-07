@@ -91,6 +91,42 @@ describe('Products E2E', () => {
     expect(response.json().data.variants[0].colorLabel).toBe('Preto')
   })
 
+  it('PUT /products/:id — permite alterar o SKU', async () => {
+    const ctx = await setupTenantWithAdmin(app)
+    const h = headers(ctx)
+
+    const created = await app.inject({ method: 'POST', url: '/products', headers: h, payload: { sku: 'OLD-01', name: 'Produto' } })
+    const productId = created.json().data.id
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/products/${productId}`,
+      headers: h,
+      payload: { sku: 'NEW-01' },
+    })
+
+    expect(updated.statusCode).toBe(200)
+    expect(updated.json().data.sku).toBe('NEW-01')
+  })
+
+  it('PUT /products/:id — rejeita SKU duplicado de outro produto', async () => {
+    const ctx = await setupTenantWithAdmin(app)
+    const h = headers(ctx)
+
+    await app.inject({ method: 'POST', url: '/products', headers: h, payload: { sku: 'TAKEN-01', name: 'Primeiro' } })
+    const created = await app.inject({ method: 'POST', url: '/products', headers: h, payload: { sku: 'FREE-01', name: 'Segundo' } })
+    const productId = created.json().data.id
+
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `/products/${productId}`,
+      headers: h,
+      payload: { sku: 'TAKEN-01' },
+    })
+
+    expect(updated.statusCode).toBe(409)
+  })
+
   it('DELETE /products/:id — soft delete', async () => {
     const ctx = await setupTenantWithAdmin(app)
     const h = headers(ctx)
