@@ -49,6 +49,21 @@ export const variantsRepository = {
     })
   },
 
+  async createMany(
+    tenantId: string,
+    productId: string,
+    variants: Array<{ skuVariant: string; colorCode?: string; colorLabel?: string }>,
+  ) {
+    return prisma.$transaction(
+      variants.map((variant) =>
+        prisma.productVariant.create({
+          data: { tenantId, productId, ...variant },
+          include: { images: true },
+        }),
+      ),
+    )
+  },
+
   async update(
     id: string,
     data: {

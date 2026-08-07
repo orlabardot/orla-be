@@ -5,6 +5,7 @@ import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
 import { variantsRepository } from '../../modules/variants/variants.repository'
 import { createVariantUseCase } from '../../modules/variants/use-cases/create-variant.use-case'
+import { bulkCreateVariantsUseCase } from '../../modules/variants/use-cases/bulk-create-variants.use-case'
 import { updateVariantUseCase } from '../../modules/variants/use-cases/update-variant.use-case'
 import { deleteVariantUseCase } from '../../modules/variants/use-cases/delete-variant.use-case'
 
@@ -21,6 +22,10 @@ const createVariantSchema = z.object({
   skuVariant: z.string().min(1).max(150),
   colorCode: z.string().max(20).optional(),
   colorLabel: z.string().max(100).optional(),
+})
+
+const bulkCreateVariantsSchema = z.object({
+  variants: z.array(createVariantSchema).min(1).max(50),
 })
 
 const updateVariantSchema = z.object({
@@ -52,6 +57,22 @@ export async function variantsRoutes(app: FastifyInstance) {
         ...body,
       })
       return reply.status(201).send({ data: variant })
+    },
+  )
+
+  // POST /products/:id/variants/bulk — cria várias variantes numa transação (admin)
+  app.post(
+    '/products/:id/variants/bulk',
+    { preHandler: [requireAdmin] },
+    async (request, reply) => {
+      const { id: productId } = productIdParamSchema.parse(request.params)
+      const body = bulkCreateVariantsSchema.parse(request.body)
+      const variants = await bulkCreateVariantsUseCase({
+        tenantId: request.tenant.id,
+        productId,
+        variants: body.variants,
+      })
+      return reply.status(201).send({ data: variants })
     },
   )
 
