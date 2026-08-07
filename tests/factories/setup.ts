@@ -5,10 +5,12 @@ import { makeUser } from './user.factory'
 export async function setupTenantWithAdmin(app: FastifyInstance) {
   const tenant = await makeTenant()
 
+  // Sem email fixo: email é único globalmente (não só por tenant), então um
+  // valor fixo colide sempre que um teste cria mais de um admin (ex.: os
+  // testes de isolamento entre tenants, que chamam isso duas vezes).
   const { user, password } = await makeUser({
     tenantId: tenant.id,
     name: 'Admin Test',
-    email: 'admin@test.com',
     password: 'admin123',
     role: 'admin',
   })

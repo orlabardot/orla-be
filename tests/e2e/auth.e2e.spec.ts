@@ -113,7 +113,7 @@ describe('Auth E2E', () => {
     expect(response.statusCode).toBe(401)
   })
 
-  it('deve isolar tenants — user do tenant A não loga no tenant B', async () => {
+  it('login ignora x-tenant-slug e sempre resolve o tenant real do usuário', async () => {
     const tenantA = await makeTenant({ slug: 'tenant-a' })
     const tenantB = await makeTenant({ slug: 'tenant-b' })
 
@@ -123,7 +123,9 @@ describe('Auth E2E', () => {
       password: 'pass',
     })
 
-    // Tentar logar com credenciais do tenant A no tenant B
+    // O login não usa mais x-tenant-slug pra resolver o tenant (ver
+    // resolveTenantFromAuth): o header é falsificável, então mesmo mandando o
+    // slug do tenant B o usuário só consegue logar no seu próprio tenant.
     const response = await app.inject({
       method: 'POST',
       url: '/auth/login',
@@ -131,6 +133,7 @@ describe('Auth E2E', () => {
       payload: { email: 'admin@a.com', password: 'pass' },
     })
 
-    expect(response.statusCode).toBe(401)
+    expect(response.statusCode).toBe(200)
+    expect(response.json().tenant.id).toBe(tenantA.id)
   })
 })
