@@ -182,6 +182,7 @@ export const productsRepository = {
   async update(
     id: string,
     data: {
+      sku?: string
       name?: string
       description?: string
       categoryId?: string | null

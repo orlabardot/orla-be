@@ -24,6 +24,7 @@ const createProductSchema = z.object({
 })
 
 const updateProductSchema = z.object({
+  sku: z.string().min(1).max(100).optional(),
   name: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   categoryId: z.string().uuid().nullable().optional(),
