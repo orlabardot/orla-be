@@ -57,12 +57,23 @@ Dois papéis apenas: `admin` (time da distribuidora — CRUD completo de catálo
   /auth/login`**, compressão de resposta, upload multipart limitado a **10MB por arquivo**.
 - **Health check**: `GET /health` — retorna `{status, db, timestamp}`, faz um `SELECT 1` real no
   banco. Bom candidato pra smoke test / probe de disponibilidade em k6.
-- **Banco**: Postgres via Supabase. A connection string de produção usa
-  **`pgbouncer=true&connection_limit=1`** — ou seja, o backend roda com o pool do Prisma
-  efetivamente limitado a **1 conexão real** por instância, atrás do pgbouncer da Supabase. Isso é
-  crítico pra teste de carga: número de instâncias/conexões concorrentes ao banco é baixo por
-  design; um teste de k6 agressivo pode saturar isso rápido e o gargalo real vai ser o banco, não
-  o Fastify.
+- **Banco**: Postgres via Supabase, através do pooler (`aws-0-us-west-2.pooler.supabase.com`). A
+  `DATABASE_URL` real de produção **não define `connection_limit`** (isso só existia como exemplo
+  no `.env.example` — testamos explicitamente `connection_limit=5` em produção e não mudou nada
+  pra melhor, o que já indicava que o pool não era o gargalo real).
+- **Região do backend importa — já corrigido uma vez**: o serviço no Railway rodava em `iad`
+  (us-east) enquanto o banco na Supabase está em `us-west-2` — cerca de 4.000km de distância. Toda
+  requisição autenticada faz pelo menos 2 idas-e-voltas sequenciais ao banco antes de chegar no
+  handler (`authenticate` busca o usuário, `resolveTenantFromAuth` busca o tenant), então esse
+  descompasso de região virava latência real e visível: `/health` chegava a picos de 569ms (só faz
+  `SELECT 1`), `/catalog` e `/products/:id` ficavam na casa de 400ms–1,2s com CPU do container
+  praticamente ocioso (confirmado via `railway metrics`, máx. 0,13 vCPU de 8) — a assinatura clássica
+  de tempo gasto em rede, não em processamento. Movemos o serviço pra `us-west` (`railway service
+  scale us-west=1 us-east=0` + `iad=0`) e a mesma bateria de testes caiu de p95 ~1,05s pra ~640ms
+  em `/catalog`/`/products/:id`, e `/health` foi de max 569ms pra max 56ms. **Se um dia o backend ou
+  o banco forem movidos de novo, confira se as regiões continuam próximas — esse é o tipo de
+  problema que não aparece em teste local (onde os dois rodam na mesma máquina) e só some com
+  carga/latência real.**
 - **Storage de imagens**: S3 ou Cloudflare R2 (configurável via `STORAGE_PROVIDER`), R2 é o
   recomendado (sem custo de egress). URLs de imagem são absolutas, servidas direto do bucket (não
   passam pelo Fastify depois do upload).
@@ -282,11 +293,10 @@ Isso é pra guiar onde **medir primeiro**, não uma lista de "está errado":
   numéricas) — vale medir com filtros combinados vs. sem filtro nenhum, e com paginação no limite
   máximo (100).
   Vários dos filtros aumentam a diferença: cor no meio de `contains` case-insensitive.
-- Conexão única com o banco em produção (`connection_limit=1` via pgbouncer) — qualquer teste de
-  carga que dispare muita coisa em paralelo contra a mesma instância vai serializar no banco antes
-  de qualquer outra coisa virar gargalo. Isso é uma característica conhecida do ambiente, não
-  necessariamente um bug, mas é essencial documentar no relatório de carga pra não concluir "a API
-  é lenta" quando na verdade é essa configuração específica.
+- ~~Conexão única com o banco (`connection_limit=1`)~~ — **investigado e descartado** (ver seção
+  2): a `DATABASE_URL` real não tinha esse parâmetro, e testar `connection_limit=5` explicitamente
+  não mudou a latência. O gargalo real era descompasso de região entre backend e banco, já
+  corrigido.
 - `update-product` e `update-variant` fazem múltiplas queries sequenciais de validação (checar
   categoria, marca, tags, SKU duplicado) antes de gravar — não chega a ser N+1 clássico, mas é
   round-trips sequenciais que dá pra medir e eventualmente paralelizar.
