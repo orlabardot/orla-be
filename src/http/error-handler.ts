@@ -32,6 +32,16 @@ export function errorHandler(
     })
   }
 
+  // @fastify/rate-limit lança um Error simples com `.statusCode` (429),
+  // não uma AppError — sem isso, cai no 500 genérico abaixo e o cliente
+  // nunca fica sabendo que foi bloqueado por rate limit.
+  if ('statusCode' in error && error.statusCode === 429) {
+    return reply.status(429).send({
+      code: 'TOO_MANY_REQUESTS',
+      message: error.message,
+    })
+  }
+
   // Erro genérico — não vazar detalhes em produção
   request.log.error(error)
   return reply.status(500).send({
