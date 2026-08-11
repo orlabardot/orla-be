@@ -2,6 +2,7 @@ import { prisma } from '../../../lib/prisma'
 import { generatePdfFromHtml } from '../../../lib/pdf'
 import { buildCatalogHtml } from '../pdf.templates'
 import { ValidationError } from '../../../errors/app-errors'
+import { imageUrlsFor } from '../../images/image-url'
 
 interface Input {
   tenantId: string
@@ -39,7 +40,9 @@ export async function generatePdfUseCase(input: Input) {
     skuVariant: v.skuVariant,
     colorLabel: v.colorLabel,
     productName: v.product.name,
-    imageUrl: v.images[0]?.url ?? null,
+    // Derivada na leitura — o Puppeteer precisa de uma URL que ele consiga abrir sem
+    // credencial, e a coluna `url` pode ter um host antigo/inacessível gravado.
+    imageUrl: v.images[0] ? imageUrlsFor(v.images[0]).url : null,
   }))
 
   const html = buildCatalogHtml({

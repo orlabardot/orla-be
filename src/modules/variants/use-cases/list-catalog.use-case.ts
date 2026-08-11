@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../../lib/prisma'
+import { withImageUrls } from '../../images/image-url'
 
 export type CatalogSort = 'name_asc' | 'name_desc' | 'newest'
 
@@ -103,24 +104,31 @@ export async function listCatalogUseCase(filters: ListCatalogFilters) {
     prisma.productVariant.count({ where: variantWhere }),
   ])
 
-  const data = variants.map((v) => ({
-    variantId: v.id,
-    productId: v.product.id,
-    skuVariant: v.skuVariant,
-    colorCode: v.colorCode,
-    colorLabel: v.colorLabel,
-    primaryImageUrl: v.images[0]?.url ?? null,
-    imageUrls: v.images.map((img) => img.url),
-    productName: v.product.name,
-    productSku: v.product.sku,
-    frameType: v.product.frameType,
-    sizeMm: v.product.sizeMm ? Number(v.product.sizeMm) : null,
-    bridgeSizeMm: v.product.bridgeSizeMm ? Number(v.product.bridgeSizeMm) : null,
-    templeSizeMm: v.product.templeSizeMm ? Number(v.product.templeSizeMm) : null,
-    gender: v.product.gender,
-    brandName: v.product.brand?.name ?? null,
-    categoryName: v.product.category?.name ?? null,
-  }))
+  const data = variants.map((v) => {
+    const images = withImageUrls(v.images)
+
+    return {
+      variantId: v.id,
+      productId: v.product.id,
+      skuVariant: v.skuVariant,
+      colorCode: v.colorCode,
+      colorLabel: v.colorLabel,
+      // Grade do catálogo usa o thumb de 400px, não o original de 1200px: o thumb já era
+      // gerado e enviado no upload, mas nunca chegava a ser servido. A versão cheia da
+      // principal continua acessível em imageUrls[0] (a ordenação põe a primária primeiro).
+      primaryImageUrl: images[0]?.thumbUrl ?? null,
+      imageUrls: images.map((img) => img.url),
+      productName: v.product.name,
+      productSku: v.product.sku,
+      frameType: v.product.frameType,
+      sizeMm: v.product.sizeMm ? Number(v.product.sizeMm) : null,
+      bridgeSizeMm: v.product.bridgeSizeMm ? Number(v.product.bridgeSizeMm) : null,
+      templeSizeMm: v.product.templeSizeMm ? Number(v.product.templeSizeMm) : null,
+      gender: v.product.gender,
+      brandName: v.product.brand?.name ?? null,
+      categoryName: v.product.category?.name ?? null,
+    }
+  })
 
   return {
     data,

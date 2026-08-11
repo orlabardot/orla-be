@@ -11,7 +11,13 @@ export interface StorageProvider {
   upload(key: string, buffer: Buffer, contentType: string): Promise<string>
   delete(key: string): Promise<void>
   getSignedUrl(key: string, expiresIn?: number): Promise<string>
-  getPublicUrl(key: string): string
+  /**
+   * URL que um browser consegue abrir sem assinatura, ou `null` quando o bucket
+   * não tem leitura pública configurada. Devolver `null` é o comportamento correto
+   * pra R2 sem `R2_PUBLIC_URL` — o endpoint da API S3 (`R2_ENDPOINT`) exige SigV4 e
+   * responde 400 `InvalidArgument: Authorization` pra qualquer `<img>`.
+   */
+  getPublicUrl(key: string): string | null
 }
 
 function createS3Storage(): StorageProvider {
@@ -56,8 +62,9 @@ function createS3Storage(): StorageProvider {
     },
 
     getPublicUrl(key: string) {
-      if (env.STORAGE_PROVIDER === 'r2' && env.R2_ENDPOINT) {
-        return `${env.R2_ENDPOINT}/${bucket}/${key}`
+      if (env.STORAGE_PROVIDER === 'r2') {
+        // Só o domínio público de leitura serve. Sem ele, quem chama usa o fallback.
+        return env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : null
       }
       return `https://${bucket}.s3.${env.AWS_REGION}.amazonaws.com/${key}`
     },
