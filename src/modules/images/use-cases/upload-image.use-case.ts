@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import { variantsRepository } from '../../variants/variants.repository'
 import { imagesRepository } from '../images.repository'
 import { storage } from '../../../lib/storage'
+import { imageUrlsFor } from '../image-url'
 import { BadRequestError, ResourceNotFoundError } from '../../../errors/app-errors'
 
 const ALLOWED_MIMETYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -84,13 +85,12 @@ export async function uploadImageUseCase(input: Input) {
   const image = await imagesRepository.create({
     variantId: input.variantId,
     storageKey: originalKey,
-    url: storage.getPublicUrl(originalKey),
+    // Mantida só por compatibilidade de schema/histórico: a coluna congela o host do dia
+    // do upload. Toda leitura deriva a URL do `storageKey` via `imageUrlsFor`.
+    url: storage.getPublicUrl(originalKey) ?? '',
     isPrimary: !hasPrimary,
     sortOrder: count,
   })
 
-  return {
-    ...image,
-    thumbUrl: storage.getPublicUrl(thumbKey),
-  }
+  return { ...image, ...imageUrlsFor(image) }
 }

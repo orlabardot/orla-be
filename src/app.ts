@@ -14,6 +14,7 @@ import { tagsRoutes } from './http/routes/tags.routes'
 import { productsRoutes } from './http/routes/products.routes'
 import { variantsRoutes } from './http/routes/variants.routes'
 import { imagesRoutes } from './http/routes/images.routes'
+import { publicImagesRoutes } from './http/routes/public-images.routes'
 import { pdfRoutes } from './http/routes/pdf.routes'
 import { catalogRoutes } from './http/routes/catalog.routes'
 import { usersRoutes } from './http/routes/users.routes'
@@ -54,7 +55,14 @@ export function buildApp() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', `https://${env.AWS_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com`],
+        imgSrc: [
+          "'self'",
+          'data:',
+          `https://${env.AWS_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com`,
+          // Domínio público do R2, quando configurado — sem isso o CSP bloquearia as
+          // próprias imagens do catálogo em qualquer página servida por esta API.
+          ...(env.R2_PUBLIC_URL ? [env.R2_PUBLIC_URL] : []),
+        ],
       },
     },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -110,6 +118,7 @@ export function buildApp() {
   app.register(productsRoutes)
   app.register(variantsRoutes)
   app.register(imagesRoutes)
+  app.register(publicImagesRoutes)
   app.register(pdfRoutes)
   app.register(catalogRoutes)
   app.register(usersRoutes)

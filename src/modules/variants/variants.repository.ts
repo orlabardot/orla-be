@@ -1,13 +1,16 @@
 import { prisma } from '../../lib/prisma'
+import { withVariantImageUrls, withVariantsImageUrls } from '../images/image-url'
 
 export const variantsRepository = {
   async findById(id: string) {
-    return prisma.productVariant.findFirst({
+    const variant = await prisma.productVariant.findFirst({
       where: { id, deletedAt: null },
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
       },
     })
+
+    return variant && withVariantImageUrls(variant)
   },
 
   async findBySkuVariant(tenantId: string, skuVariant: string) {
@@ -25,13 +28,15 @@ export const variantsRepository = {
   },
 
   async findAllByProduct(productId: string) {
-    return prisma.productVariant.findMany({
+    const variants = await prisma.productVariant.findMany({
       where: { productId, deletedAt: null },
       orderBy: { colorCode: { sort: 'asc', nulls: 'last' } },
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
       },
     })
+
+    return withVariantsImageUrls(variants)
   },
 
   async create(data: {
@@ -41,12 +46,14 @@ export const variantsRepository = {
     colorCode?: string
     colorLabel?: string
   }) {
-    return prisma.productVariant.create({
+    const variant = await prisma.productVariant.create({
       data,
       include: {
         images: true,
       },
     })
+
+    return withVariantImageUrls(variant)
   },
 
   async createMany(
@@ -54,7 +61,7 @@ export const variantsRepository = {
     productId: string,
     variants: Array<{ skuVariant: string; colorCode?: string; colorLabel?: string }>,
   ) {
-    return prisma.$transaction(
+    const created = await prisma.$transaction(
       variants.map((variant) =>
         prisma.productVariant.create({
           data: { tenantId, productId, ...variant },
@@ -62,6 +69,8 @@ export const variantsRepository = {
         }),
       ),
     )
+
+    return withVariantsImageUrls(created)
   },
 
   async update(
@@ -71,13 +80,15 @@ export const variantsRepository = {
       isActive?: boolean
     },
   ) {
-    return prisma.productVariant.update({
+    const variant = await prisma.productVariant.update({
       where: { id },
       data,
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
       },
     })
+
+    return withVariantImageUrls(variant)
   },
 
   async softDelete(id: string) {

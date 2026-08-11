@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../lib/prisma'
+import { withVariantsImageUrls } from '../images/image-url'
 
 export interface ListProductsFilters {
   tenantId: string
@@ -54,7 +55,7 @@ export const productsRepository = {
   },
 
   async findById(tenantId: string, id: string) {
-    return prisma.product.findFirst({
+    const product = await prisma.product.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: {
         category: { select: { id: true, name: true } },
@@ -71,6 +72,10 @@ export const productsRepository = {
         },
       },
     })
+
+    if (!product) return null
+
+    return { ...product, variants: withVariantsImageUrls(product.variants) }
   },
 
   async findBySku(tenantId: string, sku: string) {
@@ -169,7 +174,10 @@ export const productsRepository = {
     ])
 
     return {
-      data,
+      data: data.map((product) => ({
+        ...product,
+        variants: withVariantsImageUrls(product.variants),
+      })),
       meta: {
         page,
         limit,
