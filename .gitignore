@@ -28,10 +28,6 @@ Thumbs.db
 # Test coverage
 coverage/
 
-# Temp / planning docs (local only)
-att.md
-fix.md
-plan.md
-context.md
-backEnd.md
-deploy.md
+# Temp / planning docs (local only). Nomes específicos deixavam passar
+# qualquer .md com nome diferente — regra genérica fecha essa brecha.
+*.md
