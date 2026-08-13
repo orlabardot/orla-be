@@ -12,7 +12,7 @@ const publicSelect = {
 export const usersRepository = {
   async findAll(tenantId: string) {
     return prisma.user.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       select: publicSelect,
       orderBy: { name: 'asc' },
     })
@@ -20,14 +20,14 @@ export const usersRepository = {
 
   async findById(tenantId: string, id: string) {
     return prisma.user.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
       select: publicSelect,
     })
   },
 
   async findByIdWithPasswordHash(tenantId: string, id: string) {
     return prisma.user.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
       select: { id: true, passwordHash: true },
     })
   },
@@ -60,5 +60,12 @@ export const usersRepository = {
     },
   ) {
     return prisma.user.update({ where: { id }, data, select: publicSelect })
+  },
+
+  async softDelete(id: string) {
+    await prisma.user.update({
+      where: { id },
+      data: { deletedAt: new Date(), isActive: false },
+    })
   },
 }

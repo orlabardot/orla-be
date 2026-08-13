@@ -6,6 +6,7 @@ import { requireAdmin } from '../middlewares/require-admin'
 import { createUserUseCase } from '../../modules/users/use-cases/create-user.use-case'
 import { listUsersUseCase } from '../../modules/users/use-cases/list-users.use-case'
 import { updateUserUseCase } from '../../modules/users/use-cases/update-user.use-case'
+import { deleteUserUseCase } from '../../modules/users/use-cases/delete-user.use-case'
 
 const createUserSchema = z.object({
   name: z.string().min(1).max(255),
@@ -59,5 +60,17 @@ export async function usersRoutes(app: FastifyInstance) {
       ...body,
     })
     return reply.send({ data: user })
+  })
+
+  // DELETE /users/:id — soft delete. Diferente do toggle isActive (que só
+  // desativa o acesso), isso marca deletedAt e a conta some da listagem.
+  app.delete('/users/:id', async (request, reply) => {
+    const { id } = idParamSchema.parse(request.params)
+    await deleteUserUseCase({
+      tenantId: request.tenant.id,
+      id,
+      actingUserId: request.user.id,
+    })
+    return reply.status(204).send()
   })
 }
