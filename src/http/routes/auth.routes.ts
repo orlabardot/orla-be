@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { env } from '../../config/env'
 import { authenticate } from '../middlewares/authenticate'
 import { loginUseCase } from '../../modules/auth/use-cases/login.use-case'
 import { changePasswordUseCase } from '../../modules/auth/use-cases/change-password.use-case'
@@ -15,9 +16,9 @@ const changePasswordBodySchema = z.object({
 })
 
 export async function authRoutes(app: FastifyInstance) {
-  // POST /auth/login — rate limit: 5 tentativas/min por IP
+  // POST /auth/login — rate limit: LOGIN_RATE_LIMIT_MAX tentativas/min por IP
   app.post('/auth/login', {
-    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+    config: { rateLimit: { max: env.LOGIN_RATE_LIMIT_MAX, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const body = loginBodySchema.parse(request.body)
 

@@ -42,6 +42,25 @@ export function errorHandler(
     })
   }
 
+  // Outros erros nativos do Fastify que já vêm com um statusCode 4xx
+  // próprio (ex.: o content-type-parser recusando corpo vazio com
+  // Content-Type: application/json, código FST_ERR_CTP_EMPTY_JSON_BODY) —
+  // sem isso, caíam no 500 genérico abaixo, relatando "erro no servidor"
+  // quando o problema real é a própria requisição do cliente. A mensagem
+  // desses erros nativos é sempre sobre o formato da requisição, nunca
+  // vaza estado interno.
+  if (
+    'statusCode' in error &&
+    typeof error.statusCode === 'number' &&
+    error.statusCode >= 400 &&
+    error.statusCode < 500
+  ) {
+    return reply.status(error.statusCode).send({
+      code: 'code' in error && error.code ? String(error.code) : 'BAD_REQUEST',
+      message: error.message,
+    })
+  }
+
   // Erro genérico — não vazar detalhes em produção
   request.log.error(error)
   return reply.status(500).send({
