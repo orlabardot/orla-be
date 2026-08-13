@@ -137,6 +137,98 @@ describe('Auth E2E', () => {
     expect(response.json().tenant.id).toBe(tenantA.id)
   })
 
+  it('PUT /auth/password — troca a senha com a senha atual correta', async () => {
+    // Não passa por /auth/login aqui de propósito — o rate limit de login
+    // (5/min) é por IP e compartilhado entre todos os testes deste arquivo
+    // que usam o `app` do describe (ver o teste isolado de rate limit mais
+    // abaixo). Confirma a troca chamando PUT /auth/password de novo com a
+    // senha nova como "atual" — só bate se o hash foi realmente atualizado.
+    const tenant = await makeTenant()
+    const { user } = await makeUser({
+      tenantId: tenant.id,
+      email: 'trocar-senha@test.com',
+      password: 'senha-antiga',
+      role: 'employee',
+    })
+    const token = app.jwt.sign({ sub: user.id, tenantId: tenant.id, role: user.role })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-antiga', newPassword: 'senha-nova-123' },
+    })
+    expect(response.statusCode).toBe(200)
+
+    const oldPasswordNoLongerWorks = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-antiga', newPassword: 'outra-senha-123' },
+    })
+    expect(oldPasswordNoLongerWorks.statusCode).toBe(400)
+
+    const newPasswordWorks = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-nova-123', newPassword: 'outra-senha-123' },
+    })
+    expect(newPasswordWorks.statusCode).toBe(200)
+  })
+
+  it('PUT /auth/password — rejeita com senha atual incorreta e não altera a senha', async () => {
+    const tenant = await makeTenant()
+    const { user } = await makeUser({
+      tenantId: tenant.id,
+      email: 'senha-errada@test.com',
+      password: 'senha-certa',
+    })
+    const token = app.jwt.sign({ sub: user.id, tenantId: tenant.id, role: user.role })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-chutada', newPassword: 'senha-nova-123' },
+    })
+    expect(response.statusCode).toBe(400)
+
+    // senha original continua valendo — não foi alterada pela tentativa falha
+    const stillWorksWithOriginal = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-certa', newPassword: 'senha-nova-123' },
+    })
+    expect(stillWorksWithOriginal.statusCode).toBe(200)
+  })
+
+  it('PUT /auth/password — rejeita senha nova curta demais (422)', async () => {
+    const tenant = await makeTenant()
+    const { user } = await makeUser({ tenantId: tenant.id, password: 'senha-certa' })
+    const token = app.jwt.sign({ sub: user.id, tenantId: tenant.id, role: user.role })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'senha-certa', newPassword: 'curta' },
+    })
+
+    expect(response.statusCode).toBe(422)
+  })
+
+  it('PUT /auth/password — rejeita sem token', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/auth/password',
+      payload: { currentPassword: 'a', newPassword: 'senha-nova-123' },
+    })
+
+    expect(response.statusCode).toBe(401)
+  })
+
   it('POST /auth/login — bloqueia com 429 (não 500) depois de estourar o rate limit', async () => {
     // Instância isolada só pra esse teste: o rate limit é por IP e fica
     // guardado em memória na instância do Fastify, então usar o `app`
