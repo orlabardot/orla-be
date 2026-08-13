@@ -46,8 +46,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Type check
-        run: npx tsc --noEmit
+      # "tsc" faz o mesmo type-check de "tsc --noEmit" e além disso gera o
+      # dist/ de verdade — é o comando que o Dockerfile roda pra produção
+      # (ver Dockerfile, stage builder). Antes o CI só validava tipos sem
+      # nunca confirmar que o build de produção realmente compila.
+      - name: Build
+        run: npm run build
 
       - name: Apply migrations
         run: npx prisma migrate deploy
