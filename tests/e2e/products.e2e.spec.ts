@@ -142,6 +142,35 @@ describe('Products E2E', () => {
     expect(list.json().data).toHaveLength(0)
   })
 
+  it('DELETE /products/:id — Content-Type: application/json sem corpo dá 400, não 500', async () => {
+    // Regressão: um cliente HTTP genérico (não o axios do frontend, que só
+    // manda Content-Type quando tem payload) pode mandar esse header em toda
+    // requisição por padrão, mesmo sem corpo. O content-type-parser do
+    // Fastify rejeita isso (FST_ERR_CTP_EMPTY_JSON_BODY, statusCode 400),
+    // mas o error handler não reconhecia esse erro nativo e caía no 500
+    // genérico — reportando "erro no servidor" pra um problema que era só
+    // da requisição do cliente.
+    const ctx = await setupTenantWithAdmin(app)
+    const h = headers(ctx)
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/products',
+      headers: h,
+      payload: { sku: 'DEL-02', name: 'To Delete Via Generic Client' },
+    })
+    const productId = created.json().data.id
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/products/${productId}`,
+      headers: { ...h, 'content-type': 'application/json' },
+    })
+
+    expect(del.statusCode).toBe(400)
+    expect(del.json().code).toBe('FST_ERR_CTP_EMPTY_JSON_BODY')
+  })
+
   it('isolamento de tenant — tenant A não vê produtos do tenant B', async () => {
     const ctxA = await setupTenantWithAdmin(app)
     const ctxB = await setupTenantWithAdmin(app)

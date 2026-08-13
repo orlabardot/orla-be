@@ -23,6 +23,11 @@ const envSchema = z
     PUBLIC_API_URL: z.string().url().transform(stripTrailingSlash).optional(),
     RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
     CORS_ORIGIN: z.string().default('*'),
+    // 5/min é o valor de produção (proteção real contra brute-force). Só
+    // existe como variável pra permitir um valor mais alto em CI/E2E, onde
+    // uma suíte de testes automatizados loga com volume muito maior que
+    // qualquer usuário real faria — nunca pra afrouxar produção de verdade.
+    LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   })
   .superRefine((value, ctx) => {
     if (value.STORAGE_PROVIDER === 'r2' && !value.R2_ENDPOINT) {
