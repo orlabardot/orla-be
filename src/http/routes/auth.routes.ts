@@ -2,10 +2,16 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { authenticate } from '../middlewares/authenticate'
 import { loginUseCase } from '../../modules/auth/use-cases/login.use-case'
+import { changePasswordUseCase } from '../../modules/auth/use-cases/change-password.use-case'
 
 const loginBodySchema = z.object({
   email: z.email(),
   password: z.string().min(1),
+})
+
+const changePasswordBodySchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(100),
 })
 
 export async function authRoutes(app: FastifyInstance) {
@@ -55,6 +61,26 @@ export async function authRoutes(app: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request, reply) => {
       return reply.status(200).send({ user: request.user })
+    },
+  )
+
+  // PUT /auth/password — troca a própria senha. Diferente de PUT /users/:id
+  // (admin-only), qualquer usuário autenticado — admin ou employee — pode
+  // trocar a própria senha por aqui; exige a senha atual pra confirmar.
+  app.put(
+    '/auth/password',
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const body = changePasswordBodySchema.parse(request.body)
+
+      await changePasswordUseCase({
+        tenantId: request.user.tenantId,
+        userId: request.user.id,
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword,
+      })
+
+      return reply.status(200).send({ message: 'Password updated successfully' })
     },
   )
 }

@@ -25,6 +25,13 @@ export const usersRepository = {
     })
   },
 
+  async findByIdWithPasswordHash(tenantId: string, id: string) {
+    return prisma.user.findFirst({
+      where: { id, tenantId },
+      select: { id: true, passwordHash: true },
+    })
+  },
+
   async findByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
