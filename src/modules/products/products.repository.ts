@@ -188,6 +188,7 @@ export const productsRepository = {
   },
 
   async update(
+    tenantId: string,
     id: string,
     data: {
       sku?: string
@@ -212,7 +213,11 @@ export const productsRepository = {
     }
 
     return prisma.product.update({
-      where: { id },
+      // Combina o id (único) com tenantId — Prisma resolve o registro pelo
+      // id e ainda assim exige que tenantId bata, senão lança P2025 (record
+      // not found) em vez de atualizar um produto de outro tenant. Rede de
+      // segurança pra além da checagem que já existe na camada de use-case.
+      where: { id, tenantId },
       data: {
         ...rest,
         sizeMm: sizeMm !== undefined ? new Prisma.Decimal(sizeMm) : undefined,
@@ -230,9 +235,9 @@ export const productsRepository = {
     })
   },
 
-  async softDelete(id: string) {
+  async softDelete(tenantId: string, id: string) {
     return prisma.product.update({
-      where: { id },
+      where: { id, tenantId },
       data: { deletedAt: new Date(), isActive: false },
     })
   },

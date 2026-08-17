@@ -21,5 +21,5 @@ export async function updateTagUseCase(input: Input) {
     throw new ConflictError(`Tag "${input.name}" already exists`)
   }
 
-  return tagsRepository.update(input.id, { name: input.name, slug })
+  return tagsRepository.update(input.tenantId, input.id, { name: input.name, slug })
 }

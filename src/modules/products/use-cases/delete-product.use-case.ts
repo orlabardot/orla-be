@@ -12,5 +12,5 @@ export async function deleteProductUseCase(input: Input) {
     throw new ResourceNotFoundError('Product', input.id)
   }
 
-  await productsRepository.softDelete(input.id)
+  await productsRepository.softDelete(input.tenantId, input.id)
 }

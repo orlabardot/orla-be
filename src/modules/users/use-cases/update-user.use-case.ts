@@ -39,7 +39,7 @@ export async function updateUserUseCase(input: Input) {
 
   const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : undefined
 
-  return usersRepository.update(input.id, {
+  return usersRepository.update(input.tenantId, input.id, {
     name: input.name,
     email: input.email,
     role: input.role,

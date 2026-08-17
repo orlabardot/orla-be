@@ -26,12 +26,12 @@ export const categoriesRepository = {
     return prisma.category.create({ data })
   },
 
-  async update(id: string, data: { name: string; slug: string }) {
-    return prisma.category.update({ where: { id }, data })
+  async update(tenantId: string, id: string, data: { name: string; slug: string }) {
+    return prisma.category.update({ where: { id, tenantId }, data })
   },
 
-  async delete(id: string) {
-    return prisma.category.delete({ where: { id } })
+  async delete(tenantId: string, id: string) {
+    return prisma.category.delete({ where: { id, tenantId } })
   },
 }
 
@@ -61,12 +61,12 @@ export const brandsRepository = {
     return prisma.brand.create({ data })
   },
 
-  async update(id: string, data: { name: string; slug: string }) {
-    return prisma.brand.update({ where: { id }, data })
+  async update(tenantId: string, id: string, data: { name: string; slug: string }) {
+    return prisma.brand.update({ where: { id, tenantId }, data })
   },
 
-  async delete(id: string) {
-    return prisma.brand.delete({ where: { id } })
+  async delete(tenantId: string, id: string) {
+    return prisma.brand.delete({ where: { id, tenantId } })
   },
 }
 
@@ -96,11 +96,11 @@ export const tagsRepository = {
     return prisma.tag.create({ data })
   },
 
-  async update(id: string, data: { name: string; slug: string }) {
-    return prisma.tag.update({ where: { id }, data })
+  async update(tenantId: string, id: string, data: { name: string; slug: string }) {
+    return prisma.tag.update({ where: { id, tenantId }, data })
   },
 
-  async delete(id: string) {
-    return prisma.tag.delete({ where: { id } })
+  async delete(tenantId: string, id: string) {
+    return prisma.tag.delete({ where: { id, tenantId } })
   },
 }

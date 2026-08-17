@@ -12,5 +12,5 @@ export async function deleteBrandUseCase(input: Input) {
     throw new ResourceNotFoundError('Brand', input.id)
   }
 
-  await brandsRepository.delete(input.id)
+  await brandsRepository.delete(input.tenantId, input.id)
 }
