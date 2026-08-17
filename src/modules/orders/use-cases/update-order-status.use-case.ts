@@ -13,5 +13,5 @@ export async function updateOrderStatusUseCase(input: Input) {
     throw new ResourceNotFoundError('Order', input.id)
   }
 
-  return ordersRepository.updateStatus(input.id, input.status)
+  return ordersRepository.updateStatus(input.tenantId, input.id, input.status)
 }

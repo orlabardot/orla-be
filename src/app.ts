@@ -24,6 +24,18 @@ import { prisma } from './lib/prisma'
 
 export function buildApp() {
   const app = Fastify({
+    // Sem isso, request.ip é sempre o IP interno do proxy do Railway (o
+    // Fastify não está "atrás" de nada do ponto de vista do Node — ele só
+    // vê a conexão TCP local do proxy). @fastify/rate-limit usa request.ip
+    // como chave por padrão, então sem trustProxy o limite de login e o
+    // global viram uma cota ÚNICA compartilhada por todos os usuários de
+    // todos os tenants, não por atacante — um único IP não-autenticado
+    // consegue travar o login de toda a plataforma. Seguro usar `true`
+    // aqui porque o container não tem IP público próprio: todo tráfego
+    // externo obrigatoriamente passa pelo proxy do Railway antes de chegar
+    // aqui, não existe caminho pra um atacante forjar X-Forwarded-For
+    // direto pro processo sem passar por esse proxy primeiro.
+    trustProxy: true,
     logger: {
       level: env.NODE_ENV === 'test' ? 'silent' : 'info',
       transport:
@@ -43,9 +55,13 @@ export function buildApp() {
     },
   })
 
-  // 6.8 CORS restritivo (deve ser registrado antes do Helmet)
+  // 6.8 CORS restritivo (deve ser registrado antes do Helmet).
+  // CORS_ORIGIN aceita uma lista separada por vírgula (ex.: domínio
+  // principal + domínio alternativo do frontend) — @fastify/cors aceita um
+  // array pra validar contra múltiplas origins exatas.
+  const corsOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   app.register(fastifyCors, {
-    origin: env.NODE_ENV === 'production' ? env.CORS_ORIGIN : true,
+    origin: env.NODE_ENV === 'production' ? corsOrigins : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   })

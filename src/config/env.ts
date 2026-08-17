@@ -37,6 +37,18 @@ const envSchema = z
         message: 'R2_ENDPOINT é obrigatório quando STORAGE_PROVIDER=r2',
       })
     }
+    // Achado em auditoria de segurança: CORS_ORIGIN tinha default '*' sem
+    // essa checagem — se a variável não fosse setada no deploy, a API
+    // subia normalmente (sem erro) com CORS aberto pra qualquer origem em
+    // produção. Falha no boot é preferível a um fail-open silencioso aqui.
+    if (value.NODE_ENV === 'production' && value.CORS_ORIGIN === '*') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CORS_ORIGIN'],
+        message:
+          'CORS_ORIGIN precisa ser o(s) domínio(s) real(is) do frontend em produção (separados por vírgula se mais de um) — não pode ficar em "*"',
+      })
+    }
   })
 
 const result = envSchema.safeParse(process.env)

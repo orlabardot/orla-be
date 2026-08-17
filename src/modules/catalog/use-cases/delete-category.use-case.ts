@@ -12,5 +12,5 @@ export async function deleteCategoryUseCase(input: Input) {
     throw new ResourceNotFoundError('Category', input.id)
   }
 
-  await categoriesRepository.delete(input.id)
+  await categoriesRepository.delete(input.tenantId, input.id)
 }

@@ -62,9 +62,9 @@ export const ordersRepository = {
     })
   },
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(tenantId: string, id: string, status: string) {
     return prisma.order.update({
-      where: { id },
+      where: { id, tenantId },
       data: { status },
       include: { items: true },
     })

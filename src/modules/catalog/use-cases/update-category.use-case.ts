@@ -21,5 +21,5 @@ export async function updateCategoryUseCase(input: Input) {
     throw new ConflictError(`Category "${input.name}" already exists`)
   }
 
-  return categoriesRepository.update(input.id, { name: input.name, slug })
+  return categoriesRepository.update(input.tenantId, input.id, { name: input.name, slug })
 }
