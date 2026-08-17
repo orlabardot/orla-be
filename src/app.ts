@@ -55,9 +55,13 @@ export function buildApp() {
     },
   })
 
-  // 6.8 CORS restritivo (deve ser registrado antes do Helmet)
+  // 6.8 CORS restritivo (deve ser registrado antes do Helmet).
+  // CORS_ORIGIN aceita uma lista separada por vírgula (ex.: domínio
+  // principal + domínio alternativo do frontend) — @fastify/cors aceita um
+  // array pra validar contra múltiplas origins exatas.
+  const corsOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   app.register(fastifyCors, {
-    origin: env.NODE_ENV === 'production' ? env.CORS_ORIGIN : true,
+    origin: env.NODE_ENV === 'production' ? corsOrigins : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
