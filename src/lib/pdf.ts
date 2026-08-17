@@ -22,7 +22,13 @@ export async function generatePdfFromHtml(html: string): Promise<Buffer> {
     // neutraliza qualquer injeção que escape do escaping do template (ex.:
     // um campo novo adicionado no futuro sem passar por escapeHtml).
     await page.setJavaScriptEnabled(false)
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 })
+    // 'networkidle0'/'networkidle2' não são mais aceitos em setContent (bump
+    // do puppeteer nesta mesma rodada) — nunca fizeram sentido aqui de
+    // qualquer forma, já que setContent não é uma navegação real. 'load'
+    // espera o evento load da página, que só dispara depois que todas as
+    // <img> terminam de carregar (ou falhar) — é o que precisamos pro PDF
+    // sair com as imagens já embutidas.
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 })
 
     const pdf = await page.pdf({
       format: 'A4',
