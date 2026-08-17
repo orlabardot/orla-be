@@ -24,6 +24,18 @@ import { prisma } from './lib/prisma'
 
 export function buildApp() {
   const app = Fastify({
+    // Sem isso, request.ip é sempre o IP interno do proxy do Railway (o
+    // Fastify não está "atrás" de nada do ponto de vista do Node — ele só
+    // vê a conexão TCP local do proxy). @fastify/rate-limit usa request.ip
+    // como chave por padrão, então sem trustProxy o limite de login e o
+    // global viram uma cota ÚNICA compartilhada por todos os usuários de
+    // todos os tenants, não por atacante — um único IP não-autenticado
+    // consegue travar o login de toda a plataforma. Seguro usar `true`
+    // aqui porque o container não tem IP público próprio: todo tráfego
+    // externo obrigatoriamente passa pelo proxy do Railway antes de chegar
+    // aqui, não existe caminho pra um atacante forjar X-Forwarded-For
+    // direto pro processo sem passar por esse proxy primeiro.
+    trustProxy: true,
     logger: {
       level: env.NODE_ENV === 'test' ? 'silent' : 'info',
       transport:
