@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { resolveTenantFromAuth } from '../middlewares/resolve-tenant-from-auth'
 import { authenticate } from '../middlewares/authenticate'
 import { requireAdmin } from '../middlewares/require-admin'
-import { variantsRepository } from '../../modules/variants/variants.repository'
+import { listVariantsUseCase } from '../../modules/variants/use-cases/list-variants.use-case'
 import { createVariantUseCase } from '../../modules/variants/use-cases/create-variant.use-case'
 import { bulkCreateVariantsUseCase } from '../../modules/variants/use-cases/bulk-create-variants.use-case'
 import { updateVariantUseCase } from '../../modules/variants/use-cases/update-variant.use-case'
@@ -40,7 +40,7 @@ export async function variantsRoutes(app: FastifyInstance) {
   // GET /products/:id/variants
   app.get('/products/:id/variants', async (request, reply) => {
     const { id } = productIdParamSchema.parse(request.params)
-    const variants = await variantsRepository.findAllByProduct(id)
+    const variants = await listVariantsUseCase({ tenantId: request.tenant.id, productId: id })
     return reply.send({ data: variants })
   })
 

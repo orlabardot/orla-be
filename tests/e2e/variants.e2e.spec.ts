@@ -113,4 +113,28 @@ describe('Variants E2E', () => {
     const list = await app.inject({ method: 'GET', url: `/products/${productId}/variants`, headers: h })
     expect(list.json().data).toHaveLength(1)
   })
+
+  it('GET /products/:id/variants — IDOR: nunca lista variantes de um produto de outro tenant', async () => {
+    // Achado em auditoria de segurança: a rota nunca confirmava que o
+    // productId do path pertencia ao tenant do request — bastava adivinhar/
+    // enumerar um UUID de produto de outro tenant pra ler os dados dele.
+    const ctxA = await setupTenantWithAdmin(app)
+    const productIdA = await createProduct(app, headers(ctxA))
+    await app.inject({
+      method: 'POST',
+      url: `/products/${productIdA}/variants`,
+      headers: headers(ctxA),
+      payload: { skuVariant: 'BULK-01 C1', colorCode: 'C1' },
+    })
+
+    const ctxB = await setupTenantWithAdmin(app)
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/products/${productIdA}/variants`,
+      headers: headers(ctxB),
+    })
+
+    expect(response.statusCode).toBe(404)
+  })
 })
