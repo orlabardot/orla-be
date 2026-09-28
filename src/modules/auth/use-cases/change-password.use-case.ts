@@ -26,5 +26,5 @@ export async function changePasswordUseCase(input: Input) {
   }
 
   const passwordHash = await bcrypt.hash(input.newPassword, 12)
-  await usersRepository.update(input.userId, { passwordHash })
+  await usersRepository.update(input.tenantId, input.userId, { passwordHash })
 }

@@ -253,4 +253,44 @@ describe('Auth E2E', () => {
 
     await isolatedApp.close()
   })
+
+  it('rate limit de login é por IP de verdade (trustProxy), não uma cota global compartilhada', async () => {
+    // Regressão: sem trustProxy configurado, request.ip é sempre o IP
+    // interno do proxy do Railway pra todo mundo — o rate limit vira uma
+    // cota ÚNICA pra toda a plataforma (um atacante travaria o login de
+    // todos os tenants). app.inject com um header x-forwarded-for simula
+    // exatamente essa topologia (cliente -> proxy -> app).
+    const isolatedApp = buildApp()
+    await isolatedApp.ready()
+
+    const tenant = await makeTenant()
+    await makeUser({ tenantId: tenant.id, email: 'ip-a@test.com', password: 'pass' })
+    await makeUser({ tenantId: tenant.id, email: 'ip-b@test.com', password: 'pass' })
+
+    // Estoura o limite vindo do IP "A"
+    let lastFromA
+    for (let i = 0; i < 6; i++) {
+      lastFromA = await isolatedApp.inject({
+        method: 'POST',
+        url: '/auth/login',
+        headers: { 'x-forwarded-for': '203.0.113.10' },
+        payload: { email: 'ip-a@test.com', password: 'wrong' },
+      })
+    }
+    expect(lastFromA!.statusCode).toBe(429)
+
+    // IP "B" nunca tentou logar — se o rate limit fosse global (bug sem
+    // trustProxy), essa tentativa também levaria 429. Com trustProxy
+    // correto, tem sua própria cota e passa pela validação normal (401,
+    // senha errada — não 429).
+    const fromB = await isolatedApp.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { 'x-forwarded-for': '203.0.113.20' },
+      payload: { email: 'ip-b@test.com', password: 'wrong' },
+    })
+    expect(fromB.statusCode).toBe(401)
+
+    await isolatedApp.close()
+  })
 })

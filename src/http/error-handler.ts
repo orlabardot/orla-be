@@ -1,4 +1,5 @@
 import { FastifyError, FastifyRequest, FastifyReply } from 'fastify'
+import { Prisma } from '@prisma/client'
 import { AppError } from '../errors/app-errors'
 import { ZodError } from 'zod'
 
@@ -12,6 +13,18 @@ export function errorHandler(
     return reply.status(error.statusCode).send({
       code: error.code,
       message: error.message,
+    })
+  }
+
+  // Prisma P2025 (record to update/delete not found) — repositories de
+  // mutação agora combinam {id, tenantId} no `where` (auditoria de
+  // segurança: rede de segurança contra um use-case que esqueça de validar
+  // o tenant antes de mutar). Em uso normal isso nunca deveria disparar
+  // (o use-case já checou antes), mas se disparar é um 404, não um 500.
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    return reply.status(404).send({
+      code: 'RESOURCE_NOT_FOUND',
+      message: 'Resource not found',
     })
   }
 

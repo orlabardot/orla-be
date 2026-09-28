@@ -50,6 +50,7 @@ export const usersRepository = {
   },
 
   async update(
+    tenantId: string,
     id: string,
     data: {
       name?: string
@@ -59,12 +60,12 @@ export const usersRepository = {
       passwordHash?: string
     },
   ) {
-    return prisma.user.update({ where: { id }, data, select: publicSelect })
+    return prisma.user.update({ where: { id, tenantId }, data, select: publicSelect })
   },
 
-  async softDelete(id: string) {
+  async softDelete(tenantId: string, id: string) {
     await prisma.user.update({
-      where: { id },
+      where: { id, tenantId },
       data: { deletedAt: new Date(), isActive: false },
     })
   },

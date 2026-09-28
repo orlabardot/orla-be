@@ -21,5 +21,5 @@ export async function updateBrandUseCase(input: Input) {
     throw new ConflictError(`Brand "${input.name}" already exists`)
   }
 
-  return brandsRepository.update(input.id, { name: input.name, slug })
+  return brandsRepository.update(input.tenantId, input.id, { name: input.name, slug })
 }

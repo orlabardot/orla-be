@@ -74,6 +74,7 @@ export const variantsRepository = {
   },
 
   async update(
+    tenantId: string,
     id: string,
     data: {
       colorLabel?: string
@@ -81,7 +82,7 @@ export const variantsRepository = {
     },
   ) {
     const variant = await prisma.productVariant.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
@@ -91,9 +92,9 @@ export const variantsRepository = {
     return withVariantImageUrls(variant)
   },
 
-  async softDelete(id: string) {
+  async softDelete(tenantId: string, id: string) {
     return prisma.productVariant.update({
-      where: { id },
+      where: { id, tenantId },
       data: { deletedAt: new Date(), isActive: false },
     })
   },

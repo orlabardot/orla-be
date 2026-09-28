@@ -15,7 +15,7 @@ export async function updateVariantUseCase(input: Input) {
     throw new ResourceNotFoundError('Variant', input.variantId)
   }
 
-  return variantsRepository.update(input.variantId, {
+  return variantsRepository.update(input.tenantId, input.variantId, {
     colorLabel: input.colorLabel,
     isActive: input.isActive,
   })

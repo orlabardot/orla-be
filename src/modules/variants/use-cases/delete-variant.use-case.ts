@@ -13,5 +13,5 @@ export async function deleteVariantUseCase(input: Input) {
     throw new ResourceNotFoundError('Variant', input.variantId)
   }
 
-  await variantsRepository.softDelete(input.variantId)
+  await variantsRepository.softDelete(input.tenantId, input.variantId)
 }

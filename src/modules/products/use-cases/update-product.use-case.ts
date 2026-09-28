@@ -60,5 +60,5 @@ export async function updateProductUseCase(input: Input) {
   }
 
   const { tenantId, id, ...data } = input
-  return productsRepository.update(id, data)
+  return productsRepository.update(tenantId, id, data)
 }

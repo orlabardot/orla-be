@@ -12,5 +12,5 @@ export async function deleteTagUseCase(input: Input) {
     throw new ResourceNotFoundError('Tag', input.id)
   }
 
-  await tagsRepository.delete(input.id)
+  await tagsRepository.delete(input.tenantId, input.id)
 }

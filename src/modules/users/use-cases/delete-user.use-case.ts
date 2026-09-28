@@ -17,5 +17,5 @@ export async function deleteUserUseCase(input: Input) {
     throw new BadRequestError('Você não pode excluir a própria conta')
   }
 
-  await usersRepository.softDelete(input.id)
+  await usersRepository.softDelete(input.tenantId, input.id)
 }
