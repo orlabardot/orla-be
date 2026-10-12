@@ -27,6 +27,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/orla_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/orla_test
       JWT_SECRET: test-secret-with-at-least-32-characters-here
       JWT_EXPIRES_IN: 8h
       AWS_ACCESS_KEY_ID: test
