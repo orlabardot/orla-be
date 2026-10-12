@@ -5,7 +5,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
+  // Conexão usada só pelo CLI (migrate). Em produção o app vai pelo pooler de
+  // transação (DATABASE_URL, porta 6543) e as migrations pelo pooler de sessão
+  // (DIRECT_URL, porta 5432) — assim o migrate do pre-deploy nunca disputa
+  // vaga com as conexões do app já no ar (incidente EMAXCONNSESSION, out/2026).
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================
