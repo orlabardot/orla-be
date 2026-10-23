@@ -1,12 +1,13 @@
 # =============================================================
 # Stage 1: Build — compila TypeScript e gera Prisma Client
 # =============================================================
-FROM node:20-slim AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Evita que o puppeteer baixe o Chromium (usaremos o do sistema no runtime)
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# Evita que o puppeteer baixe o Chrome (usaremos o Chromium do sistema no runtime).
+# A partir do puppeteer 25 só PUPPETEER_SKIP_DOWNLOAD é reconhecida.
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -24,7 +25,7 @@ RUN npm run build
 # =============================================================
 # Stage 2: Runtime — imagem enxuta com Chromium instalado
 # =============================================================
-FROM node:20-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 WORKDIR /app
 
@@ -37,7 +38,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Aponta Puppeteer para o Chromium do sistema
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV NODE_ENV=production
 
