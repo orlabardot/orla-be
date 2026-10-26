@@ -11,7 +11,7 @@ export default defineRailway(() => {
     healthcheck: "/health",
     healthcheckTimeout: 60,
     preDeploy: "node_modules/.bin/prisma migrate deploy",
-    // O `railway config migrate` não traduz a restart policy do railway.toml.
+    // Restart policy que vinha do antigo railway.toml (o `railway config migrate` não a traduz).
     deploy: { restartPolicyType: "ON_FAILURE", restartPolicyMaxRetries: 3 },
     replicas: { "us-west2": 1 },
   });
